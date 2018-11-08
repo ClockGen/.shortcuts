@@ -1,0 +1,6 @@
+[submodule "proot_launcher"]
+	path = proot_launcher
+	url = https://github.com/ClockGen/proot_launcher
+[submodule "archive_manager"]
+	path = archive_manager
+	url = https://github.com/ClockGen/archive_manager
