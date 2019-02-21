@@ -1,0 +1,26 @@
+#!/data/data/com.termux/files/usr/bin/bash
+while (( $# ))
+do
+    case $1 in
+        "--install")
+            mkdir "/data/data/com.termux/files/usr/etc/my.cnf.d"
+            mkdir "/data/data/com.termux/files/usr/var/run"
+            mysql_install_db
+            mysqld &
+            mysql_secure_installation
+            pkill -SIGQUIT mysqld
+        ;;
+        "--start")
+            nginx & php-fpm & mysqld &
+        ;;
+        "--stop")
+            pkill -SIGQUIT mysqld
+            pkill -SIGQUIT php-fpm #SIGTERM
+            nginx -s quit
+        ;;
+        *)
+            echo "$1 is not recognized"
+        ;;
+    esac
+    shift
+done

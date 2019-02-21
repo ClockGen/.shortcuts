@@ -1,0 +1,13 @@
+#!/data/data/com.termux/files/usr/bin/bash
+touch "/sdcard/Download/aria2session"
+aria2c \
+--save-session-interval=10 \
+--rpc-listen-all=true \
+--rpc-listen-port=8666 \
+--save-session="/sdcard/Download/aria2session" \
+--rpc-secret=aria2 \
+--check-certificate=false \
+--dir="/sdcard/Download" \
+--enable-rpc=true \
+--daemon=true \
+--input-file="/sdcard/Download/aria2session"
