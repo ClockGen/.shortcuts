@@ -1,0 +1,66 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+#you will have a mental breakdown
+#if you read my code
+
+TW_URL="https://twitter.com"
+USER_AGENT=""
+
+get_media(){
+    MEDIA_LINK=$(cat $1 |\
+    sed -n '/<div class="media">/,/<\/div>/p' |\
+    grep -E -o 'https://pbs.twimg.com/.+\.(jpg|png)')
+    if [[ $? == 0 ]]; then
+        echo "Found media..."
+        wget -P media "$MEDIA_LINK" -a wget.log
+    else
+        echo "No media..."
+    fi
+}
+
+get_tweets(){
+    TWEETS="$(cat $1 |\
+    sed -n '/<table class="tweet  "/,/href=.*>/p' |\
+    sed -n '1~2!p' |\
+    grep -E -o '/.+/status/[0-9]+\?p=v')"
+    unset TWEETS_LIST
+    for i in $TWEETS; do
+        TWEET_ID=$(awk -F '/|?' '{print $4}' <<< $i)
+        TWEETS_LIST+=(${TWEET_ID})
+    done
+    for i in ${TWEETS_LIST[@]}; do
+        TWEET_URL="${TW_URL}/${2}/status/${i}?p=v"
+        wget -O "tweets/${i}" "$TWEET_URL" -a wget.log
+        get_media "tweets/${i}"
+    done
+}
+
+get_next_page_link(){
+    NEXT_PAGE=$(cat $1 | grep -E -o '/.*\?max_id=[0-9]+')
+}
+
+for i in $@; do
+    if [[ ! "$i" =~ ^https://twitter.com/[a-zA-Z0-9]+$ ]]; then
+        echo "Wrong link"
+        exit 1
+    fi
+done
+
+while (( $# )); do
+    USER_ID=$(awk -F '/' '{print $4}' <<< $1)
+    mkdir -p $USER_ID/pages
+    mkdir -p $USER_ID/tweets
+    mkdir -p $USER_ID/media
+    cd $USER_ID
+    wget -O "pages/0" "$1" -a wget.log
+    index=0
+    while get_next_page_link "pages/${index}"; do
+        echo "Scraping page ${index}..."
+        PAGE_FILE="pages/$((index + 1))"
+        wget -O "$PAGE_FILE" "${TW_URL}${NEXT_PAGE}" -a wget.log
+        get_tweets "$PAGE_FILE" "$USER_ID"
+        (( index++ ))
+    done
+    cd -
+    shift
+done

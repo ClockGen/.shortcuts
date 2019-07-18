@@ -1,0 +1,54 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+# DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+# Version 2, December 2004
+#
+# Copyright (C) 2019 Bukano
+#
+# Everyone is permitted to copy and distribute verbatim or modified
+# copies of this license document, and changing it is allowed as long
+# as the name is changed.
+#
+# DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+# TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
+#
+#0. You just DO WHAT THE FUCK YOU WANT TO.
+
+if [[ ! $(which mid3v2) ]]; then
+    if [[ ! $(which pip) ]]; then
+        pkg install python
+    else
+        pip install mutagen
+    fi
+fi
+
+if [[ ! $(which wget) ]]; then
+    pkg install wget
+fi
+
+USERAGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537i.36 (KHTML, like Gecko) Chrome/72.0.3626.97 Safari/537.36"
+if [[ ! "$1" =~ ^https://.+\.bandcamp\.com/album/.+$ ]]; then
+    echo "Not a valid link"
+    exit 1
+fi
+out="$(wget -O - $1)"
+trackinfo="$(echo "$out" | grep -E "trackinfo: \[.*\]" | sed -e 's/trackinfo: //' -e 's/.$//')"
+index=0
+artist="$(echo "$out" | grep -E -m 1 "artist: \".+\"," | grep -E -o "\".+\"" | sed 's/\"//g')"
+album="$(echo "$out" | grep -E -m 1 "album_title: \".+\"," | grep -E -o "\".+\"" | sed 's/\"//g')"
+year="$(echo "$out" | grep -E -m 1 "album_release_date: \".+\"," | grep -E -o "\".+\"" | grep -E -o '[0-9]{4}')"
+cover="$(echo "$out" | sed -n '/<div id="tralbumArt">/,/<\/div>/p' | grep -E '<a class="popupImage" href=".+">' | grep -E -o 'https://f4.bcbits.com/img/.+.(jpg|png|webp)')"
+mkdir -p "${artist}/${year} - ${album}"
+cd "${artist}/${year} - ${album}"
+wget -e robots=off --user-agent="$USERAGENT" -O cover.jpg "$cover"
+while [[ ! "$(echo "$trackinfo" | jq ".[$index]")" == "null" ]]; do
+    name="$(echo "$trackinfo" | jq -r ".[$index].title")"
+    number="$(echo "$trackinfo" | jq ".[$index].track_num")"
+    file="$(echo "$trackinfo" | jq -r ".[$index].file | .[]") "
+    wget -e robots=off --user-agent="$USERAGENT" -O "${number}. ${name}.mp3" $file
+    ((index++))
+    mid3v2 -D "${number}. ${name}.mp3"
+    mid3v2 -y "$year" -a "$artist" -A "$album" -t "$name" -T "$number" -p cover.jpg "${number}. ${name}.mp3"
+    mid3v2 -l "${number}. ${name}.mp3"
+done
+cd -
